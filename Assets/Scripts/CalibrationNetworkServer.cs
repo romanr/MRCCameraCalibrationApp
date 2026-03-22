@@ -438,18 +438,24 @@ public class CalibrationNetworkServer : MonoBehaviour
 			Debug.LogError($"[CalibrationNetworkServer] {ex.Message}");
 		}
 
-		/*
-		// request storage permissions
-		AndroidJavaClass environment = new AndroidJavaClass("android.os.Environment");
-		if (!environment.CallStatic<bool>("isExternalStorageManager"))
+		// request MANAGE_EXTERNAL_STORAGE for Android 11+ to allow writing to external storage
+		try
 		{
-			string manageAppFilesAccess = new AndroidJavaClass("android.provider.Settings").GetStatic<string>("ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION");
-			AndroidJavaObject intentUri = new AndroidJavaClass("android.net.Uri").CallStatic<AndroidJavaObject>("parse", $"package:{UnityEngine.Application.identifier}");
+			AndroidJavaClass environment = new AndroidJavaClass("android.os.Environment");
+			if (!environment.CallStatic<bool>("isExternalStorageManager"))
+			{
+				string manageAppFilesAccess = new AndroidJavaClass("android.provider.Settings").GetStatic<string>("ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION");
+				AndroidJavaObject intentUri = new AndroidJavaClass("android.net.Uri").CallStatic<AndroidJavaObject>("parse", $"package:{UnityEngine.Application.identifier}");
 
-			var intent = new AndroidJavaObject("android.content.Intent", manageAppFilesAccess, intentUri);
-			currentActivity.Call("startActivity", intent);
+				var intent = new AndroidJavaObject("android.content.Intent", manageAppFilesAccess, intentUri);
+				currentActivity.Call("startActivity", intent);
+			}
 		}
-		*/
+		catch (Exception ex)
+		{
+			Debug.LogWarning($"[CalibrationNetworkServer] Could not request MANAGE_EXTERNAL_STORAGE: {ex.Message}");
+		}
+
 		if (!Permission.HasUserAuthorizedPermission(Permission.ExternalStorageRead) ||
 			!Permission.HasUserAuthorizedPermission(Permission.ExternalStorageWrite))
 		{
@@ -655,10 +661,35 @@ public class CalibrationNetworkServer : MonoBehaviour
 					Debug.Log($"[CalibrationNetworkServer] {Path.Combine(appDir.FullName, "files")} is not valid");
 				}
 			}
+
+			// Also save to a publicly accessible folder on external storage as a fallback
+			// for devices where writing to Android/data is restricted (Android 12+)
+			SaveToExternalStorageFallback(fileInfo.FullName);
 		}
 
 		tcpServer.Broadcast(OPERATION_COMPLETE, (errorText != null) ? Encoding.UTF8.GetBytes(errorText) : new byte[0]);
 		Debug.Log($"[CalibrationNetworkServer] broadcast OPERATION_COMPLETE");
+	}
+
+	private void SaveToExternalStorageFallback(string sourcePath)
+	{
+#if UNITY_ANDROID
+		try
+		{
+			string mrcDir = Path.Combine(storageDir.FullName, "MRC");
+			string destPath = Path.Combine(mrcDir, "mrc.xml");
+
+			if (!Directory.Exists(mrcDir))
+				Directory.CreateDirectory(mrcDir);
+
+			CopyFile(sourcePath, destPath);
+			Debug.Log($"[CalibrationNetworkServer] MRC calibration saved to fallback path: {destPath}");
+		}
+		catch (Exception ex)
+		{
+			Debug.LogWarning($"[CalibrationNetworkServer] Could not save to external storage fallback: {ex.Message}");
+		}
+#endif
 	}
 
 	private void TryDeleteCalibrationData()
@@ -675,6 +706,16 @@ public class CalibrationNetworkServer : MonoBehaviour
 					DeleteFile(Path.Combine(directoryInfo.FullName, "mrc.xml"));
 				}
 			}
+
+			// Also delete from the external storage fallback path
+#if UNITY_ANDROID
+			string fallbackPath = Path.Combine(storageDir.FullName, "MRC", "mrc.xml");
+			if (File.Exists(fallbackPath))
+			{
+				DeleteFile(fallbackPath);
+				Debug.Log($"[CalibrationNetworkServer] Deleted calibration from fallback path: {fallbackPath}");
+			}
+#endif
 		}
 		catch (Exception)
 		{

@@ -573,16 +573,19 @@ public class CalibrationNetworkServer : MonoBehaviour
 			{
 				string errorText = null;
 				string calibrationXmlData = Encoding.UTF8.GetString(buffer, start, length);
-				XmlDocument xmlDocument = new XmlDocument();
-				xmlDocument.LoadXml(calibrationXmlData);
 
-				XmlNode cameraNode = xmlDocument.SelectSingleNode("opencv_storage/camera_id");
-				if (cameraNode != null)
+				// Validate and parse the XML; detailed error forwarded back to the PC tool.
+				if (!CalibrationXmlParser.TryParse(calibrationXmlData, out CalibrationXmlParser.CalibrationData calibrationData, out errorText))
 				{
+					Debug.LogWarning($"[CalibrationNetworkServer] Calibration XML rejected: {errorText}");
+				}
+				else
+				{
+					Debug.Log($"[CalibrationNetworkServer] Calibration data valid — camera '{calibrationData.CameraName}' id={calibrationData.CameraId} " +
+						$"res={calibrationData.ImageWidth}x{calibrationData.ImageHeight}");
 #if UNITY_ANDROID
 					try
 					{
-						Convert.ToUInt32(cameraNode.Value);
 						string fileName = Path.Combine(thisAppDir.FullName, "mrc.xml");
 
 						Debug.Log($"[CalibrationNetworkServer] Writing camera calibration to {fileName}");
@@ -594,24 +597,20 @@ public class CalibrationNetworkServer : MonoBehaviour
 							actions.Enqueue(PostCalibrationUpdate);
 						}
 					}
-					catch (Exception ex3)
+					catch (Exception ex)
 					{
-						errorText = "Could not write file\n" + ex3.Message;
+						errorText = "Could not write file\n" + ex.Message;
 					}
 #else
 					try
 					{
-						SendCalibrationDataToOVRServer(xmlDocument);
+						SendCalibrationDataToOVRServer(calibrationData);
 					}
-					catch (Exception ex2)
+					catch (Exception ex)
 					{
-						text = "Failed to send calibration data\n" + ex2.Message;
+						errorText = "Failed to send calibration data\n" + ex.Message;
 					}
 #endif
-				}
-				else
-				{
-					errorText = "XML or Camera ID invalid";
 				}
 
 				if (errorText != null)
@@ -757,53 +756,47 @@ public class CalibrationNetworkServer : MonoBehaviour
 		}
 	}
 
-	private void SendCalibrationDataToOVRServer(XmlDocument xml)
+	private void SendCalibrationDataToOVRServer(CalibrationXmlParser.CalibrationData data)
 	{
-		XmlNode xmlNode = xml.SelectSingleNode("opencv_storage");
-		float[] array = Array.ConvertAll(xmlNode["translation"]["data"].InnerText.Split(new char[0], StringSplitOptions.RemoveEmptyEntries), float.Parse);
-		float[] array2 = Array.ConvertAll(xmlNode["rotation"]["data"].InnerText.Split(new char[0], StringSplitOptions.RemoveEmptyEntries), float.Parse);
-		float[] array3 = Array.ConvertAll(xmlNode["camera_matrix"]["data"].InnerText.Split(new char[0], StringSplitOptions.RemoveEmptyEntries), float.Parse);
-		
-		float[,] array4 = new float[3, 3];
-		int num = 0;
-		for (int i = 0; i < 3; i++)
-		{
-			for (int j = 0; j < 3; j++)
-			{
-				array4[i, j] = array3[num];
-				num++;
-			}
-		}
+		float[] translation = data.Translation;
+		float[] rotation = data.Rotation;
+		float[] cameraMatrix = data.CameraMatrix;
 
-		int num2 = XmlConvert.ToInt32(xmlNode["image_width"].InnerText);
-		int num3 = XmlConvert.ToInt32(xmlNode["image_height"].InnerText);
+		float[,] m = new float[3, 3];
+		int k = 0;
+		for (int i = 0; i < 3; i++)
+			for (int j = 0; j < 3; j++)
+				m[i, j] = cameraMatrix[k++];
+
+		int imageWidth = data.ImageWidth;
+		int imageHeight = data.ImageHeight;
 
 		OVRPlugin.CameraIntrinsics cameraIntrinsics = default(OVRPlugin.CameraIntrinsics);
 		cameraIntrinsics.LastChangedTimeSeconds = OVRPlugin.GetTimeInSeconds();
 		cameraIntrinsics.FOVPort = default(OVRPlugin.Fovf);
-		cameraIntrinsics.FOVPort.UpTan = array4[1, 2] / array4[1, 1];
-		cameraIntrinsics.FOVPort.DownTan = ((float)num3 - array4[1, 2]) / array4[1, 1];
-		cameraIntrinsics.FOVPort.LeftTan = array4[0, 2] / array4[0, 0];
-		cameraIntrinsics.FOVPort.RightTan = ((float)num2 - array4[0, 2]) / array4[0, 0];
+		cameraIntrinsics.FOVPort.UpTan = m[1, 2] / m[1, 1];
+		cameraIntrinsics.FOVPort.DownTan = ((float)imageHeight - m[1, 2]) / m[1, 1];
+		cameraIntrinsics.FOVPort.LeftTan = m[0, 2] / m[0, 0];
+		cameraIntrinsics.FOVPort.RightTan = ((float)imageWidth - m[0, 2]) / m[0, 0];
 		cameraIntrinsics.VirtualNearPlaneDistanceMeters = 0.1f;
 		cameraIntrinsics.VirtualFarPlaneDistanceMeters = 1000f;
-		cameraIntrinsics.ImageSensorPixelResolution.w = num2;
-		cameraIntrinsics.ImageSensorPixelResolution.h = num3;
+		cameraIntrinsics.ImageSensorPixelResolution.w = imageWidth;
+		cameraIntrinsics.ImageSensorPixelResolution.h = imageHeight;
 
 		OVRPlugin.CameraExtrinsics cameraExtrinsics = default(OVRPlugin.CameraExtrinsics);
 		cameraExtrinsics.LastChangedTimeSeconds = OVRPlugin.GetTimeInSeconds();
 		cameraExtrinsics.CameraStatusData = OVRPlugin.CameraStatus.CameraStatus_Calibrated;
 		cameraExtrinsics.RelativePose.Position = default(OVRPlugin.Vector3f);
-		cameraExtrinsics.RelativePose.Position.x = array[0];
-		cameraExtrinsics.RelativePose.Position.y = array[1];
-		cameraExtrinsics.RelativePose.Position.z = array[2];
+		cameraExtrinsics.RelativePose.Position.x = translation[0];
+		cameraExtrinsics.RelativePose.Position.y = translation[1];
+		cameraExtrinsics.RelativePose.Position.z = translation[2];
 		cameraExtrinsics.RelativePose.Orientation = default(OVRPlugin.Quatf);
-		cameraExtrinsics.RelativePose.Orientation.x = array2[0];
-		cameraExtrinsics.RelativePose.Orientation.y = array2[1];
-		cameraExtrinsics.RelativePose.Orientation.z = array2[2];
-		cameraExtrinsics.RelativePose.Orientation.w = array2[3];
+		cameraExtrinsics.RelativePose.Orientation.x = rotation[0];
+		cameraExtrinsics.RelativePose.Orientation.y = rotation[1];
+		cameraExtrinsics.RelativePose.Orientation.z = rotation[2];
+		cameraExtrinsics.RelativePose.Orientation.w = rotation[3];
 
-		OVRPlugin.SetExternalCameraProperties(xmlNode["camera_name"].InnerText, ref cameraIntrinsics, ref cameraExtrinsics);
+		OVRPlugin.SetExternalCameraProperties(data.CameraName, ref cameraIntrinsics, ref cameraExtrinsics);
 		if (!OVRPlugin.UpdateExternalCamera())
 		{
 			Debug.LogError("[CalibrationNetworkServer] UpdateExternalCamera failed");

@@ -1,0 +1,66 @@
+name: Release Build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write   # needed to push the version-bump commit and tag
+
+jobs:
+  build-apk:
+    name: Build APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+          # Fetch full history so we can push the version-bump commit.
+          fetch-depth: 0
+
+      - name: Increment patch version
+        id: versioning
+        run: |
+          NEW_VERSION=$(python3 .github/scripts/increment_version.py) || exit 1
+          echo "version=${NEW_VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Commit and tag version bump
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add ProjectSettings/ProjectSettings.asset
+          if git diff --cached --quiet; then
+            echo "No version changes detected — skipping commit."
+          else
+            git commit -m "chore: bump version to ${{ steps.versioning.outputs.version }} [skip ci]"
+            git tag "v${{ steps.versioning.outputs.version }}"
+            git push
+            git push --tags
+          fi
+
+      - name: Cache Unity Library
+        uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-Android-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          restore-keys: |
+            Library-Android-
+            Library-
+
+      - name: Build APK
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          targetPlatform: Android
+          buildName: MrcCameraCalibration
+          allowDirtyBuild: true
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MrcCameraCalibration-v${{ steps.versioning.outputs.version }}
+          path: build/Android/*.apk
+          if-no-files-found: error

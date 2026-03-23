@@ -103,9 +103,9 @@ Runs the JUnit tests for both the `app` and `UnityPlugin` modules on the local J
 ./gradlew UnityPlugin:test
 ```
 
-Test reports are written to:
+Test reports are written to (paths relative to `UnityUtilsAar/`):
 ```
-UnityUtilsAar/<module>/build/reports/tests/testDebugUnitTest/index.html
+<module>/build/reports/tests/testDebugUnitTest/index.html
 ```
 
 ### Instrumented Tests (requires a connected device or running emulator)
@@ -125,9 +125,9 @@ Runs the Espresso / AndroidJUnit4 tests on a physical device or emulator.
 
 Connect a device via USB (or start an Android emulator with API 29+) before running these commands.
 
-Test reports are written to:
+Test reports are written to (paths relative to `UnityUtilsAar/`):
 ```
-UnityUtilsAar/<module>/build/reports/androidTests/connected/index.html
+<module>/build/reports/androidTests/connected/index.html
 ```
 
 ---

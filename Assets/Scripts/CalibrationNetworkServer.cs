@@ -52,15 +52,18 @@ public class CalibrationNetworkServer : MonoBehaviour
 
 	private MRCNetworkDiscovery mrcNetworkDiscovery;
 
-	private static readonly string[] KnownMrcPackages =
+	[Serializable]
+	private class KnownApp
 	{
-		"com.beatgames.beatsaber",        // Beat Saber
-		"com.cloudheadgames.pistolwhip",  // Pistol Whip
-		"com.kluge.SynthRiders",          // Synth Riders
-		"com.getsupernatural.supernatural", // Supernatural
-		"com.AnotherAxiom.GorillaTag",    // Gorilla Tag
-		"com.toast.vr.richiesplankexperience", // Richie's Plank Experience
-	};
+		public string name;
+		public string id;
+	}
+
+	[Serializable]
+	private class KnownAppList
+	{
+		public KnownApp[] items;
+	}
 
 	private const int DataVersion = 1;
 
@@ -490,19 +493,33 @@ public class CalibrationNetworkServer : MonoBehaviour
 	{
 		List<DirectoryInfo> list = new List<DirectoryInfo>();
 
+		TextAsset jsonAsset = Resources.Load<TextAsset>("known_apps");
+		if (jsonAsset == null)
+		{
+			Debug.LogError("[CalibrationNetworkServer] known_apps.json not found in Resources");
+			return list;
+		}
+
+		KnownAppList knownApps = JsonUtility.FromJson<KnownAppList>("{\"items\":" + jsonAsset.text + "}");
+		if (knownApps == null || knownApps.items == null)
+		{
+			Debug.LogError("[CalibrationNetworkServer] Failed to parse known_apps.json");
+			return list;
+		}
+
 		DirectoryInfo androidDataDir = new DirectoryInfo(Path.Combine(storageDir.FullName, "Android/data"));
 
-		foreach (string packageName in KnownMrcPackages)
+		foreach (KnownApp app in knownApps.items)
 		{
-			DirectoryInfo packageDir = new DirectoryInfo(Path.Combine(androidDataDir.FullName, packageName));
+			DirectoryInfo packageDir = new DirectoryInfo(Path.Combine(androidDataDir.FullName, app.id));
 			if (packageDir.Exists)
 			{
-				Debug.Log($"[CalibrationNetworkServer] {packageName} is installed");
+				Debug.Log($"[CalibrationNetworkServer] {app.name} ({app.id}) is installed");
 				list.Add(packageDir);
 			}
 			else
 			{
-				Debug.Log($"[CalibrationNetworkServer] {packageName} not found, skipping");
+				Debug.Log($"[CalibrationNetworkServer] {app.name} ({app.id}) not found, skipping");
 			}
 		}
 

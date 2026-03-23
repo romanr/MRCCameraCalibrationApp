@@ -18,6 +18,10 @@ This document describes everything a developer needs to know to build, test, and
   - SDK Platform **API level 32** (Android 12)
   - Android Emulator (only needed for instrumented tests)
 - **Gradle** – a wrapper (`gradlew` / `gradlew.bat`) is included in `UnityUtilsAar/`; no separate installation is required
+  > **Linux / macOS first-time setup:** If you get `Permission denied` when running `./gradlew`, make it executable once:
+  > ```bash
+  > chmod +x UnityUtilsAar/gradlew
+  > ```
 
 ### Target Device
 - Meta Quest 2, Quest Pro, or Quest 3 running **Android 10 (API 29)** or newer

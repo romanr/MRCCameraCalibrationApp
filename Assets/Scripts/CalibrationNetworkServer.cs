@@ -52,6 +52,16 @@ public class CalibrationNetworkServer : MonoBehaviour
 
 	private MRCNetworkDiscovery mrcNetworkDiscovery;
 
+	private static readonly string[] KnownMrcPackages =
+	{
+		"com.beatgames.beatsaber",        // Beat Saber
+		"com.cloudheadgames.pistolwhip",  // Pistol Whip
+		"com.kluge.SynthRiders",          // Synth Riders
+		"com.getsupernatural.supernatural", // Supernatural
+		"com.AnotherAxiom.GorillaTag",    // Gorilla Tag
+		"com.toast.vr.richiesplankexperience", // Richie's Plank Experience
+	};
+
 	private const int DataVersion = 1;
 
 	private const int USER_ID = 31;
@@ -480,43 +490,20 @@ public class CalibrationNetworkServer : MonoBehaviour
 	{
 		List<DirectoryInfo> list = new List<DirectoryInfo>();
 
-		try
+		DirectoryInfo androidDataDir = new DirectoryInfo(Path.Combine(storageDir.FullName, "Android/data"));
+
+		foreach (string packageName in KnownMrcPackages)
 		{
-			DirectoryInfo directoryInfo = new DirectoryInfo(Path.Combine(storageDir.FullName, "Android/data"));
-
-			AndroidJavaObject activityClass = new AndroidJavaClass("com.unity3d.player.UnityPlayer");
-			AndroidJavaObject currentActivity = activityClass.GetStatic<AndroidJavaObject>("currentActivity");
-
-			AndroidJavaObject androidJavaObject = currentActivity.Call<AndroidJavaObject>("getPackageManager", Array.Empty<object>());
-
-			int @static = new AndroidJavaClass("android.content.pm.PackageManager").GetStatic<int>("GET_META_DATA");
-			int static2 = new AndroidJavaClass("android.content.pm.ApplicationInfo").GetStatic<int>("FLAG_SYSTEM");
-			int static3 = new AndroidJavaClass("android.content.pm.ApplicationInfo").GetStatic<int>("FLAG_UPDATED_SYSTEM_APP");
-			AndroidJavaObject androidJavaObject2 = androidJavaObject.Call<AndroidJavaObject>("getInstalledPackages", new object[1] { @static });
-
-			int num = androidJavaObject2.Call<int>("size", Array.Empty<object>());
-			for (int i = 0; i < num; i++)
+			DirectoryInfo packageDir = new DirectoryInfo(Path.Combine(androidDataDir.FullName, packageName));
+			if (packageDir.Exists)
 			{
-				AndroidJavaObject androidJavaObject3 = androidJavaObject2.Call<AndroidJavaObject>("get", new object[1] { i });
-				int num2 = androidJavaObject3.Get<AndroidJavaObject>("applicationInfo").Get<int>("flags");
-				
-				if ((num2 & (static2 | static3)) == 0)
-				{
-					string packageName = androidJavaObject3.Get<string>("packageName");
-					Debug.Log($"[CalibrationNetworkServer] *** non-system package {packageName} ***");
-
-					DirectoryInfo directoryInfo2 = new DirectoryInfo(Path.Combine(directoryInfo.FullName, packageName));
-					if (directoryInfo2.Exists)
-					{
-						Debug.Log($"[CalibrationNetworkServer] {packageName} is a writable application");
-						list.Add(directoryInfo2);
-					}
-				}
+				Debug.Log($"[CalibrationNetworkServer] {packageName} is installed");
+				list.Add(packageDir);
 			}
-		}
-		catch (Exception ex)
-		{
-			Debug.LogError($"[CalibrationNetworkServer] {ex.Message}");
+			else
+			{
+				Debug.Log($"[CalibrationNetworkServer] {packageName} not found, skipping");
+			}
 		}
 
 		return list;

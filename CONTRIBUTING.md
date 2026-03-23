@@ -13,9 +13,9 @@ This document describes everything a developer needs to know to build, test, and
 
 ### Android Native Plugin (UnityUtilsAar)
 - **Android Studio** (latest stable) _or_ a standalone JDK + Android SDK setup
-- **JDK 8** (Java 1.8) – the plugin uses `JavaVersion.VERSION_1_8`
+- **JDK 17** – required by Android Gradle Plugin 8.x
 - **Android SDK** with the following components installed:
-  - SDK Platform **API level 32** (Android 12)
+  - SDK Platform **API level 35** (Android 15)
   - Android Emulator (only needed for instrumented tests)
 - **Gradle** – a wrapper (`gradlew` / `gradlew.bat`) is included in `UnityUtilsAar/`; no separate installation is required
   > **Linux / macOS first-time setup:** If you get `Permission denied` when running `./gradlew`, make it executable once:

@@ -281,10 +281,7 @@ public class CalibrationXmlParserTests
     [Test]
     public void TryParse_NonNumericFloatInTranslation_ReturnsFalse()
     {
-        string xml = ValidXml.Replace("<data>0.5 1.0 -0.5</data>", "<data>0.5 NaN -0.5</data>");
-        // System.Single.Parse does accept "NaN" — verify the parser behaviour.
-        // On many platforms float.TryParse("NaN") returns true, so we only check
-        // that when truly non-numeric tokens are present the parse fails.
+        // Ensure that when truly non-numeric tokens are present the parse fails.
         string xml2 = ValidXml.Replace("<data>0.5 1.0 -0.5</data>", "<data>0.5 abc -0.5</data>");
         bool ok = CalibrationXmlParser.TryParse(xml2, out _, out string error);
         Assert.IsFalse(ok);

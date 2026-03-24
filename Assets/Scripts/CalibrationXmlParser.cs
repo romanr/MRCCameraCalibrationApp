@@ -108,7 +108,16 @@ public static class CalibrationXmlParser
         XmlDocument doc = new XmlDocument();
         try
         {
-            doc.LoadXml(xmlData);
+            XmlReaderSettings settings = new XmlReaderSettings
+            {
+                DtdProcessing = DtdProcessing.Prohibit,
+                XmlResolver = null,
+            };
+            using (System.IO.StringReader sr = new System.IO.StringReader(xmlData))
+            using (XmlReader reader = XmlReader.Create(sr, settings))
+            {
+                doc.Load(reader);
+            }
         }
         catch (XmlException ex)
         {

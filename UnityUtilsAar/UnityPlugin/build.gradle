@@ -3,7 +3,7 @@ plugins {
 }
 
 android {
-    namespace 'com.insbyte.unityplugin'
+    namespace 'com.insbyte.MixedRealityConfigPart'
     compileSdk 35
 
     defaultConfig {
@@ -37,19 +37,29 @@ dependencies {
 }
 
 task copyAARDebug(type: Copy) {
-    // build/outputs/aar
+    def aarPath = [rootDir.absolutePath, '..', 'Assets', 'Plugins', 'Android', 'MixedRealityConfigPart.aar'].join(File.separator)
     from    ( [buildDir.absolutePath, 'outputs', 'aar'].join(File.separator) )
     include ( "${project.name}-debug.aar" )
     into    ( [rootDir.absolutePath, '..', 'Assets', 'Plugins', 'Android'].join(File.separator) )
-    rename  ("${project.name}-debug.aar", 'unityplugin.aar')
+    rename  ("${project.name}-debug.aar", 'MixedRealityConfigPart.aar')
+    doLast {
+        println "------------------------------------------------------------"
+        println "AAR Copied to: ${aarPath}"
+        println "------------------------------------------------------------"
+    }
 }
 
 task copyAARRelease(type: Copy) {
-    // build/outputs/aar
+    def aarPath = [rootDir.absolutePath, '..', 'Assets', 'Plugins', 'Android', 'MixedRealityConfigPart.aar'].join(File.separator)
     from    ( [buildDir.absolutePath, 'outputs', 'aar'].join(File.separator) )
     include ( "${project.name}-release.aar" )
     into    ( [rootDir.absolutePath, '..', 'Assets', 'Plugins', 'Android'].join(File.separator) )
-    rename  ("${project.name}-release.aar", 'unityplugin.aar')
+    rename  ("${project.name}-release.aar", 'MixedRealityConfigPart.aar')
+    doLast {
+        println "------------------------------------------------------------"
+        println "AAR Copied to: ${aarPath}"
+        println "------------------------------------------------------------"
+    }
 }
 
 afterEvaluate {

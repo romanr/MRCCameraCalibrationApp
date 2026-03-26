@@ -3,11 +3,11 @@ plugins {
 }
 
 android {
-    namespace 'com.insbyte.unityutils'
+    namespace 'com.insbyte.MixedRealityConfigPart'
     compileSdk 35
 
     defaultConfig {
-        applicationId "com.insbyte.unityutils"
+        applicationId "com.insbyte.MixedRealityConfigPart"
         minSdk 29
         targetSdk 35
         versionCode 1
@@ -26,9 +26,27 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+
+    applicationVariants.all { variant ->
+        variant.outputs.all { output ->
+            def fileName = "MixedRealityConfigPart-${variant.name}.apk"
+            output.outputFileName = fileName
+
+            def taskName = "print${variant.name.capitalize()}ApkPath"
+            tasks.register(taskName) {
+                doLast {
+                    println "------------------------------------------------------------"
+                    println "APK Location: ${output.outputFile}"
+                    println "------------------------------------------------------------"
+                }
+            }
+            variant.assembleProvider.get().finalizedBy(taskName)
+        }
+    }
 }
 
 dependencies {
+    implementation project(':UnityPlugin')
     implementation 'androidx.appcompat:appcompat:1.7.0'
     implementation 'com.google.android.material:material:1.12.0'
 

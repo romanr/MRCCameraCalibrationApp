@@ -12,6 +12,6 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "UnityUtilsAar"
+rootProject.name = "MixedRealityConfigPart"
 include ':app'
 include ':UnityPlugin'

@@ -1,0 +1,8 @@
+[
+  { "name": "Beat Saber",               "id": "com.beatgames.beatsaber" },
+  { "name": "Pistol Whip",              "id": "com.cloudheadgames.pistolwhip" },
+  { "name": "Synth Riders",             "id": "com.kluge.SynthRiders" },
+  { "name": "Supernatural",             "id": "com.getsupernatural.supernatural" },
+  { "name": "Gorilla Tag",              "id": "com.AnotherAxiom.GorillaTag" },
+  { "name": "Richie's Plank Experience","id": "com.toast.vr.richiesplankexperience" }
+]
